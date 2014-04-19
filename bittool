@@ -1,0 +1,243 @@
+#!/usr/bin/env ruby -w
+
+# New BSD License
+#
+# Copyright (c) 2014  Hiroaki Abe <hiroaki0404@gmail.com>
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+# OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+# OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+# SUCH DAMAGE.
+
+
+Base_url='https://developer.api.bitcasa.com/v1'
+DownloadFile="bittool.$$"
+
+settingFile = '/.bittool.yaml'
+
+require 'net/http'
+require 'uri'
+require 'json'
+require 'yaml'
+
+# require 'awesome_print'
+
+### usage
+def usage()
+  puts "usage: #{$0} command [params]"
+  puts "    command: ls cat info"
+  puts "\tls: [param]"
+  puts "\tcat: param"
+  puts "\tinfo: param"
+  exit FALSE
+end
+
+
+def hide_token(uri)
+  uri.gsub(/access_token=[^&]*/,'')
+end
+
+def get_json(location, limit = 10)
+  get_api(location, limit, "json")
+end
+
+def get_api(location, limit = 10, format = "raw")
+  raise ArgumentError, 'too many HTTP redirects' if limit == 0
+  uri = URI.parse(location)
+  begin
+    response = Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == 'https') do |http|
+      http.open_timeout = 5
+      http.read_timeout = 30
+      http.get(uri.request_uri)
+    end
+    case response
+    when Net::HTTPSuccess
+      if format == "json" then
+        json = response.body
+        JSON.parse(json)
+      else
+        response.body
+      end
+    when Net::HTTPRedirection
+      location = response['location']
+      warn "redirected to #{hide_token(location)}"
+      get_api(location, limit - 1, format)
+    else
+      puts [hide_token(uri.to_s), response.value].join(" : ")
+      # handle error
+      exit FALSE
+    end
+  rescue => e
+    puts [hide_token(uri.to_s), e.class, e].join(" : ")
+    # handle error
+    exit FALSE
+  end
+end
+
+def find_in_dir(name, bpath, data)
+  for items in data["items"]
+    if items["name"] == name then
+      %r!^(?<base>.+)/[^/]+$! =~ items["path"]
+      if base == bpath then
+        return items["path"]
+      end
+    end
+  end
+  return nil
+end
+
+def b_search(name, bpath)
+  result = get_json("#{Base_url}/folders#{bpath}?access_token=#{Token}&depth=0")
+  return nil unless result
+  if result["error"] then
+    puts result["error"]
+    return nil
+  else
+    for item in name.split("/")
+      ret = find_in_dir(item, bpath, result["result"])
+      return bpath unless ret
+      bpath = ret
+    end
+  end
+  return bpath
+end
+
+def get_top_folder(path)
+  result = get_json("#{Base_url}/folders/?access_token=#{Token}")
+  return nil unless result
+  if result["error"] then
+    puts result["error"]
+    return nil
+  else
+    for items in result["result"]["items"]
+      if items["name"] == path then
+          return items["path"]
+      end
+    end
+  end
+  return nil
+end
+
+def get_b_path(path)
+  %r!^/?(?<topdir>[^/]+)/?(?<childdir>.+$)*!u =~ path
+  return "/" unless topdir
+  bpath = get_top_folder(topdir)
+  return bpath unless childdir
+  return b_search(childdir, bpath)
+end
+
+def check_and_print_error(result)
+  if not result then
+    puts "API Error"
+    exit FALSE
+  elsif result["error"] then
+    puts result["error"]
+    exit FALSE
+  end
+  return
+end
+
+### ls         
+def ls_print_sub(items)
+  puts "[#{items["category"]}]\t#{items["name"]}\t#{Time.at(items["mtime"]).asctime}"
+end
+
+def ls_print(result)
+  unless result["error"] then
+    items = result["result"]
+    ls_print_sub items
+  end
+end
+
+def ls_print_items(result)
+  unless result["error"] then
+    for items in result["result"]["items"]
+      ls_print_sub items
+    end
+  end
+end
+
+def cmd_ls(path)
+  result = get_json("#{Base_url}/folders#{path}?access_token=#{Token}")
+  check_and_print_error result
+  # Target is file, not folder
+  if result["result"]["items"].length == 0 then
+    result = get_json("#{Base_url}/files#{path}/?access_token=#{Token}")
+    check_and_print_error result
+    ls_print result
+  else
+    ls_print_items result
+  end
+  return TRUE
+end
+
+### cat
+def cmd_cat(path)
+  result = get_json("#{Base_url}/files#{path}/?access_token=#{Token}")
+  check_and_print_error result
+  if result["result"]["category"] == "folder" then
+    puts "Can't treat folder."
+    return FALSE
+  end
+  puts get_api("#{Base_url}/files/#{DownloadFile}?path=#{path}&access_token=#{Token}")
+  return TRUE
+end
+
+### info
+def info_print(item)
+  item.each do |key, val|
+    case key
+    when "ctime", "mtime", "birth_time"
+      puts "#{key}: #{Time.at(val).asctime}"
+    else
+      puts "#{key}: #{val}"
+    end
+  end
+end
+
+def cmd_info(path)
+  result = get_json("#{Base_url}/files#{path}/?access_token=#{Token}")
+  check_and_print_error result
+  info_print(result["result"])
+end
+
+### main
+target = (ARGV.length > 1 )? ARGV[1]: "/"
+if ARGV.length > 0 then
+  cmd = ARGV[0]
+else
+  usage
+end
+
+File.open((ENV['HOME'] + settingFile), "r") do |f|
+  settings = YAML.load(f.read())
+  Token = settings['token']
+end
+
+case cmd
+when "ls"
+  cmd_ls(get_b_path(target))
+when "cat"
+  target == "/" ? usage: cmd_cat(get_b_path(target))
+when "info"
+  target == "/" ? usage: cmd_info(get_b_path(target))
+else
+  usage
+end
