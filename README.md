@@ -1,14 +1,18 @@
-bittool
+Bittool
 =======
 
-bittoolはshell上でBitcasaのファイルやディレクトリを操作するツールです。
+Bittoolはshell上で[Bitcasa](http://l.bitcasa.com/0CPI0V.V)のファイルやディレクトリを操作するツールです。
 Ruby 2.0で開発していますが、1.9でも動くと思います。
 
 使い方
 -
-* bittool ls [ファイルorディレクトリ]
-* bittool cat ファイル
-* bittool info ファイルorディレクトリ
+* bittool ls [ディレクトリ]  
+  指定されたディレクトリにあるファイル・ディレクトリを表示します。  
+  ディレクトリの指定がなかった場合、Bitcasaの/ が指定されたものとして扱います。
+* bittool cat ファイル  
+  指定されたファイルの内容を表示します。
+* bittool info ファイルorディレクトリ  
+  指定されたファイルorディレクトリの情報を表示します。
 
 設定ファイル
 --
