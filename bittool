@@ -156,7 +156,7 @@ end
 
 ### ls         
 def ls_print_sub(items)
-  puts "[#{items["category"]}]\t#{items["name"]}\t#{Time.at(items["mtime"]).asctime}"
+  puts "[#{items["category"]}]\t#{items["name"]}\t#{Time.at(items["mtime"]/1000).asctime}"
 end
 
 def ls_print(result)
@@ -205,7 +205,7 @@ def info_print(item)
   item.each do |key, val|
     case key
     when "ctime", "mtime", "birth_time"
-      puts "#{key}: #{Time.at(val).asctime}"
+      puts "#{key}: #{Time.at(val/1000).asctime}"
     else
       puts "#{key}: #{val}"
     end
