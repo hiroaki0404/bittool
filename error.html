@@ -8,10 +8,18 @@
 
     <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
 
-    <title>Bittool</title>
+    <title>Bittool Token Error</title>
+    <script language="javascript">
+function getmsg() {
+  var msg = (location.href.match(/^.+msg=(.+)$/)||[])[1];
+  if (msg) {
+    document.getElementById("msg").textContent = msg;
+  }
+}
+    </script>
   </head>
 
-  <body onload="settoken()">
+  <body onload="getmsg()">
 
     <!-- HEADER -->
     <div id="header_wrap" class="outer">
@@ -32,10 +40,9 @@
     <div id="main_content_wrap" class="outer">
       <section id="main_content" class="inner">
         <h1>
-	  <a name="token" class="anchor" href="#token"><span class="octicon octicon-link"></span></a>アクセストークン</h1>
-
-	<p><input type="text" id="token" value="" readonly size="64" onclick="this.select(0,this.value.length)" /><br />
-	  これを、ホームディレクトリの<code>.bittool.yaml</code>ファイルに保存します。</p>
+	  <a name="token" class="anchor" href="#token"><span class="octicon octicon-link"></span></a>エラー</h1>
+	<p>アクセストークンの取得でエラーが発生しました。
+	<p><span id="msg">Error</span></p>
       </section>
     </div>
 
