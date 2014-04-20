@@ -11,7 +11,7 @@
     <title>Bittool</title>
   </head>
 
-  <body onload="settoken()">
+  <body>
 
     <!-- HEADER -->
     <div id="header_wrap" class="outer">
@@ -34,8 +34,9 @@
         <h1>
 	  <a name="token" class="anchor" href="#token"><span class="octicon octicon-link"></span></a>アクセストークン</h1>
 
-	<p><input type="text" id="token" value="" readonly size="64" onclick="this.select(0,this.value.length)" /><br />
-	  これを、ホームディレクトリの<code>.bittool.yaml</code>ファイルに保存します。</p>
+	<p>
+	  <code>.bittool.yaml</code>ファイルをホームディレクトリに保存します。<br />
+	他の人からアクセスされないよう、ファイルのモードを0400にしておきます。</p>
       </section>
     </div>
 
@@ -46,6 +47,5 @@
         <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
       </footer>
     </div>
-    <script language="javascript" src="javascripts/gettoken.js"></script>
   </body>
 </html>
